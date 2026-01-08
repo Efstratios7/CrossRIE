@@ -66,7 +66,7 @@ print("Denoised shape:", denoised_Cxy.shape)
 The codebase relies on the following core libraries:
 
 *   `tensorflow>=2.10.0`
-*   `keras`
+*   `keras==3.13.0`
 *   `numpy>=2.4.0`
 
 Install them via:
