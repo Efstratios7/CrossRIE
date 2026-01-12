@@ -14,7 +14,7 @@ This repository hosts the **Generalized Cross-Correlation Correction (CCC) Model
 
 ## Repository Structure
 *   `ccc/`: Source package.
-    *   `layers.py`: Contains the `GeneralizedCCCModel` definition.
+    *   `layers.py`: Contains the `GeneralizedCCCLayer` definition.
     *   `custom_layers.py`: Custom Keras layers used by the model.
 *   `tests/`: Unit tests.
 *   `requirements.txt`: Python package dependencies.
@@ -37,19 +37,19 @@ pip install -e .
 
 ## How to use it
 
-The core model is defined in `ccc.layers` but can be imported directly from the top-level `ccc` package.
+The core component is defined in `ccc.layers` as a Keras Layer (`GeneralizedCCCLayer`) but can be imported directly from the top-level `ccc` package.
 
 ### Example
 
 ```python
 import tensorflow as tf
-from ccc import GeneralizedCCCModel
+from ccc import GeneralizedCCCLayer
 
-# 1. Initialize the model
+# 1. Initialize the layer
 #    - multiplicative=True ensures non-negative shrinkage (useful for variance/volatility)
 #    - encoding_units: Dense layers before the LSTM
 #    - lstm_units: Hidden state size of the recurrent shrinkage
-model = GeneralizedCCCModel(
+ccc_layer = GeneralizedCCCLayer(
     encoding_units=[16, 8],
     lstm_units=[32],
     final_hidden_layer_sizes=[16],
@@ -68,7 +68,7 @@ n_samples = tf.constant([100.0, 100.0]) # Number of effective samples per batch
 
 # 3. Forward Pass
 #    Returns the denoised Cross-Correlation matrix Cxy
-denoised_Cxy = model([Cxx, Cyy, Cxy, n_samples])
+denoised_Cxy = ccc_layer([Cxx, Cyy, Cxy, n_samples])
 
 print("Input shape:", Cxy.shape)
 print("Denoised shape:", denoised_Cxy.shape)

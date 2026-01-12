@@ -3,10 +3,10 @@ from keras import layers, Model
 from . import custom_layers as cl
 from typing import Optional, List, Any
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Models', name='GeneralizedCCCModel')
-class GeneralizedCCCModel(Model):
+@tf.keras.utils.register_keras_serializable(package='CCC_Models', name='GeneralizedCCCLayer')
+class GeneralizedCCCLayer(layers.Layer):
     """
-    Generalized Cross-Correlation Correction (CCC) Model.
+    Generalized Cross-Correlation Correction (CCC) Layer.
     Uses deep learning to denoise cross-correlation matrices.
     """
     def __init__(self, 
@@ -17,7 +17,7 @@ class GeneralizedCCCModel(Model):
                  final_activation: str, 
                  outputs: List[str] = ['Cxy'], 
                  **kwargs):
-        super(GeneralizedCCCModel, self).__init__(**kwargs)
+        super(GeneralizedCCCLayer, self).__init__(**kwargs)
         
         if multiplicative and final_activation not in ['softplus', 'relu', 'sigmoid']:
             raise ValueError("For multiplicative models, final_activation must be one of 'softplus', 'relu', or 'sigmoid' to ensure non-negative outputs.")
@@ -104,7 +104,7 @@ class GeneralizedCCCModel(Model):
             return outputs_dict
 
     def get_config(self):
-        config = super(GeneralizedCCCModel, self).get_config()
+        config = super(GeneralizedCCCLayer, self).get_config()
         config.update({
             'encoding_units': self.encoding_units,
             'lstm_units': self.lstm_units,

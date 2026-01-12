@@ -6,9 +6,9 @@ from keras import losses, optimizers
 import numpy as np
 import random
 
-from ccc import GeneralizedCCCModel
+from ccc import GeneralizedCCCLayer
 
-class TestGeneralizedCCCModel(unittest.TestCase):
+class TestGeneralizedCCCLayer(unittest.TestCase):
     def setUp(self):
         # Default baseline parameters
         self.B = 2
@@ -21,7 +21,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         
     def test_model_initialization_additive(self):
         """Test instantiation and forward pass in Additive mode"""
-        model = GeneralizedCCCModel(
+        model = GeneralizedCCCLayer(
             encoding_units=self.encoding_units,
             lstm_units=self.lstm_units,
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -42,7 +42,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
 
     def test_model_initialization_multiplicative(self):
         """Test instantiation and forward pass in Multiplicative mode"""
-        model = GeneralizedCCCModel(
+        model = GeneralizedCCCLayer(
             encoding_units=self.encoding_units,
             lstm_units=self.lstm_units,
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -71,7 +71,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         
         for conf in configs:
             with self.subTest(config=conf):
-                model = GeneralizedCCCModel(
+                model = GeneralizedCCCLayer(
                     encoding_units=conf['encoding'],
                     lstm_units=conf['lstm'],
                     final_hidden_layer_sizes=conf['final'],
@@ -92,7 +92,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         activations = ['softplus', 'relu', 'sigmoid']
         for act in activations:
             with self.subTest(activation=act):
-                model = GeneralizedCCCModel(
+                model = GeneralizedCCCLayer(
                     encoding_units=self.encoding_units,
                     lstm_units=self.lstm_units,
                     final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -111,7 +111,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         activations = ['linear', 'tanh']
         for act in activations:
              with self.subTest(activation=act):
-                model = GeneralizedCCCModel(
+                model = GeneralizedCCCLayer(
                     encoding_units=self.encoding_units,
                     lstm_units=self.lstm_units,
                     final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -127,7 +127,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
     def test_invalid_activation_config(self):
         """Test validation logic for activation functions"""
         with self.assertRaises(ValueError):
-            GeneralizedCCCModel(
+            GeneralizedCCCLayer(
                 encoding_units=self.encoding_units,
                 lstm_units=self.lstm_units,
                 final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -140,7 +140,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         """Stress test with slightly larger matrices"""
         N_large = 50
         M_large = 60
-        model = GeneralizedCCCModel(
+        model = GeneralizedCCCLayer(
             encoding_units=[16],
             lstm_units=[16],
             final_hidden_layer_sizes=[16],
@@ -168,14 +168,24 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         # Target (Clean Cxy)
         Cxy_clean = tf.random.normal((B, N, M))
         
-        # 2. Initialize Model
-        model = GeneralizedCCCModel(
+        # 2. Initialize Layer
+        layer = GeneralizedCCCLayer(
             encoding_units=[16],
             lstm_units=[16],
             final_hidden_layer_sizes=[8],
             multiplicative=True,
             final_activation='softplus'
         )
+        
+        # Define Inputs
+        in_Cxx = tf.keras.Input(shape=(N, N))
+        in_Cyy = tf.keras.Input(shape=(M, M))
+        in_Cxy = tf.keras.Input(shape=(N, M))
+        in_n = tf.keras.Input(shape=())
+        
+        # Build Model
+        out = layer([in_Cxx, in_Cyy, in_Cxy, in_n])
+        model = tf.keras.Model(inputs=[in_Cxx, in_Cyy, in_Cxy, in_n], outputs=out)
         
         # 3. Compile
         optimizer = optimizers.Adam(learning_rate=1e-3)
@@ -221,14 +231,24 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         # Target
         Cxy_clean = tf.random.normal((B, nstocks_N, nstocks_M))
         
-        # 2. Initialize Model
-        model = GeneralizedCCCModel(
+        # 2. Initialize Layer
+        layer = GeneralizedCCCLayer(
             encoding_units=[32],
             lstm_units=[16],
             final_hidden_layer_sizes=[16],
             multiplicative=True,
             final_activation='softplus'
         )
+        
+        # Define Inputs
+        in_Cxx = tf.keras.Input(shape=(nstocks_N, nstocks_N))
+        in_Cyy = tf.keras.Input(shape=(nstocks_M, nstocks_M))
+        in_Cxy = tf.keras.Input(shape=(nstocks_N, nstocks_M))
+        in_n = tf.keras.Input(shape=())
+        
+        # Build Model
+        out = layer([in_Cxx, in_Cyy, in_Cxy, in_n])
+        model = tf.keras.Model(inputs=[in_Cxx, in_Cyy, in_Cxy, in_n], outputs=out)
         
         # 3. Compile
         model.compile(optimizer='adam', loss='mse')

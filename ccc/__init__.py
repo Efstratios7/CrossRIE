@@ -1,3 +1,3 @@
-from .layers import GeneralizedCCCModel
+from .layers import GeneralizedCCCLayer
 
-__all__ = ["GeneralizedCCCModel"]
+__all__ = ["GeneralizedCCCLayer"]
