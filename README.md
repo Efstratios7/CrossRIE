@@ -9,12 +9,14 @@
 
 
 ## Key Features
-- **Generalized Cross-Correlation Correction (CCC)**: Uses deep learning to denoise cross-correlation matrices by leveraging empirical marginal correlations and singular value decomposition.
-- **Deep Spectral Denoising**: Implements a shared encoder (MLP) and a bidirectional LSTM aggregator to clean singular values based on global spectral context.
-- **Flexible Correction Mechanisms**: Supports both additive (default) and bounded multiplicative corrections for singular values.
-- **Dimension Awareness**: explicitly incorporates aspect ratios and system dimensions ($n_x, n_y, \Delta t_{in}$) into the correction logic.
-- **Practical Outputs**: Returns naturally denoised cross-correlation matrices ($\mathbf{C}_{XY}$) and/or cleaned singular values ($\widetilde{s}_k$).
-- **TensorFlow/Keras Implementation**: Built as a standard Keras Layer for easy integration into larger deep learning models.
+
+- **Physics-Informed Neural Architecture**: The model utilizes a custom neural architecture designed to operate directly in the empirical singular-vector basis. By parameterizing the cleaning process as a nonlinear map from empirical singular values to cleaned values, the network explicitly enforces the problem's symmetries and rotational invariance implied by Random Matrix Theory (RMT).
+
+- **Random Matrix Theory (RMT) as a Limiting Case**: The architecture is constructed to embed the asymptotically optimal Benaych-Georges, Bouchaud, and Potters (BBP) analytical solution as a special case. This "physics-informed" constraint ensures the model can recover theoretically optimal denoising in stationary regimes while providing the flexibility to adapt to real-world non-stationary dynamics and macroscopic market modes.
+
+- **RIE-Style Cross-Covariance Cleaning**: Building on Rotationally Invariant Estimators (RIE), the method preserves the empirical singular vectors while performing nonlinear shrinkage on the singular values. This approach generalizes classical covariance cleaning to the rectangular cross-covariance setting, effectively characterizing comovements between different sets of assets even in high-dimensional regimes.
+
+- **Robust End-to-End Forecasting**: Unlike purely analytical cleaners that rely on strict stationarity and bounded spectra, this framework is trained end-to-end to minimize out-of-sample (OOS) reconstruction error. The design is dimension-agnostic, allowing a model trained on one range of assets to be deployed across different universe sizes and relative dimensions without retraining.
 
 ## Installation
 Install from source:
@@ -28,7 +30,7 @@ pip install -e .
 ## Quick Start
 
 ### Basic Usage
-The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C}_{XX}, \mathbf{C}_{YY}$), the cross-correlation matrix ($\mathbf{C}_{XY}$), and the number of samples ($n$).
+The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C}_{XX}$, $\mathbf{C}_{YY}$), the cross-correlation matrix ($\mathbf{C}_{XY}$), and the number of samples ($n$).
 
 ```python
 import tensorflow as tf
@@ -111,7 +113,7 @@ You can configure the layer to return different components by passing a list of 
 
 ```python
 # Returns only the cleaned singular values
-layer_s = CrossRIELayer(outputs=['Sxy'])
+layer_s = CrossRIELayer(outputs=['Sxy']) # When creating the model use Sxy to receive the cleaned singular values instead the clean cross-correlation matrix Cxy
 s_tilde = layer_s([Cxx, Cyy, Cxy, n_samples])
 ```
 
