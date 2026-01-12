@@ -1,0 +1,11 @@
+name: ccc_env
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - ipykernel
+  - "numpy<2"
+  - pip:
+    - tensorflow>=2.10.0
+    - keras>=3.0.0

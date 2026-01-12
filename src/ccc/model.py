@@ -1,11 +1,7 @@
 import tensorflow as tf
 from keras import layers, Model
-try:
-    from . import utils as cl
-    from . import utils as ccf
-except ImportError:
-    import utils as cl
-    import utils as ccf
+from . import utils as cl
+from . import utils as ccf
 
 def GeneralizedCCCModel(encoding_units, lstm_units, final_hidden_layer_sizes,
                         multiplicative, final_activation, 

@@ -4,10 +4,7 @@ import os
 import tensorflow as tf
 import numpy as np
 
-# Add parent directory to path to allow importing modules from publication_release
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from model import GeneralizedCCCModel
+from ccc.model import GeneralizedCCCModel
 
 class TestGeneralizedCCCModel(unittest.TestCase):
     def setUp(self):
