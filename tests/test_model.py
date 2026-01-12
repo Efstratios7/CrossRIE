@@ -2,9 +2,10 @@ import unittest
 import sys
 import os
 import tensorflow as tf
+from keras import losses, optimizers
 import numpy as np
 
-from ccc.model import GeneralizedCCCModel
+from ccc import GeneralizedCCCModel
 
 class TestGeneralizedCCCModel(unittest.TestCase):
     def setUp(self):
@@ -25,7 +26,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
             multiplicative=False,
             final_activation='linear',
-            use_raw_returns=False
+
         )
         
         Cxx = tf.random.normal((self.B, self.N, self.N))
@@ -46,7 +47,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
             multiplicative=True,
             final_activation='softplus',
-            use_raw_returns=False
+
         )
         
         Cxx = tf.random.normal((self.B, self.N, self.N))
@@ -57,25 +58,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         output = model([Cxx, Cyy, Cxy, n_samples])
         self.assertEqual(output.shape, (self.B, self.N, self.M))
 
-    def test_use_raw_returns(self):
-        """Test the model when use_raw_returns=True (Inputting raw time series Rx, Ry)"""
-        model = GeneralizedCCCModel(
-            encoding_units=self.encoding_units,
-            lstm_units=self.lstm_units,
-            final_hidden_layer_sizes=self.final_hidden_layer_sizes,
-            multiplicative=True,
-            final_activation='softplus',
-            use_raw_returns=True
-        )
-        
-        # Inputs: Rx (B, N, T), Ry (B, M, T)
-        Rx = tf.random.normal((self.B, self.N, self.T))
-        Ry = tf.random.normal((self.B, self.M, self.T))
-        
-        # Models with use_raw_returns expect [Rx, Ry]
-        output = model([Rx, Ry])
-        
-        self.assertEqual(output.shape, (self.B, self.N, self.M))
+
 
     def test_varying_architectures(self):
         """Test different network depths and widths"""
@@ -149,7 +132,7 @@ class TestGeneralizedCCCModel(unittest.TestCase):
                 final_hidden_layer_sizes=self.final_hidden_layer_sizes,
                 multiplicative=True,
                 final_activation='linear', # Invalid for multiplicative
-                use_raw_returns=False
+
             )
 
     def test_large_dimensions(self):
@@ -170,6 +153,52 @@ class TestGeneralizedCCCModel(unittest.TestCase):
         
         output = model([Cxx, Cyy, Cxy, n_samples])
         self.assertEqual(output.shape, (self.B, N_large, M_large))
+
+
+    def test_training_simulation(self):
+        """Simulate a user training the model with random data"""
+        # 1. Setup Data
+        B, N, M = 4, 10, 10
+        Cxx = tf.random.normal((B, N, N))
+        Cyy = tf.random.normal((B, M, M))
+        Cxy_noisy = tf.random.normal((B, N, M))
+        n_samples = tf.constant([100.0] * B)
+        
+        # Target (Clean Cxy)
+        Cxy_clean = tf.random.normal((B, N, M))
+        
+        # 2. Initialize Model
+        model = GeneralizedCCCModel(
+            encoding_units=[16],
+            lstm_units=[16],
+            final_hidden_layer_sizes=[8],
+            multiplicative=True,
+            final_activation='softplus'
+        )
+        
+        # 3. Compile
+        optimizer = optimizers.Adam(learning_rate=1e-3)
+        loss_fn = losses.MeanSquaredError()
+        model.compile(optimizer=optimizer, loss=loss_fn)
+        
+        # 4. Train for one step
+        # Note: input is [Cxx, Cyy, Cxy, n_samples]
+        history = model.fit(
+            x=[Cxx, Cyy, Cxy_noisy, n_samples],
+            y=Cxy_clean,
+            epochs=1,
+            batch_size=2,
+            verbose=0
+        )
+        
+        # 5. Check loss exists
+        loss = history.history['loss'][0]
+        self.assertIsInstance(loss, float)
+        self.assertGreater(loss, 0.0)
+        
+        # 6. Check forward pass after training
+        pred = model.predict([Cxx, Cyy, Cxy_noisy, n_samples])
+        self.assertEqual(pred.shape, (B, N, M))
 
 if __name__ == '__main__':
     unittest.main()

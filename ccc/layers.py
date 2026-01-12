@@ -1,0 +1,110 @@
+import tensorflow as tf
+from keras import layers, Model
+from . import custom_layers as cl
+
+@tf.keras.utils.register_keras_serializable(package='CCC_Models', name='GeneralizedCCCModel')
+class GeneralizedCCCModel(Model):
+    def __init__(self, encoding_units, lstm_units, final_hidden_layer_sizes,
+                 multiplicative, final_activation, outputs=['Cxy'], **kwargs):
+        super(GeneralizedCCCModel, self).__init__(**kwargs)
+        
+        if multiplicative and final_activation not in ['softplus', 'relu', 'sigmoid']:
+            raise ValueError("For multiplicative models, final_activation must be one of 'softplus', 'relu', or 'sigmoid' to ensure non-negative outputs.")
+        if not multiplicative and final_activation not in ['linear', 'tanh']:
+            raise ValueError("For additive models, final_activation must be either 'linear' or 'tanh'.")
+        
+        self.encoding_units = encoding_units
+        self.lstm_units = lstm_units
+        self.final_hidden_layer_sizes = final_hidden_layer_sizes
+        self.multiplicative = multiplicative
+        self.final_activation = final_activation
+        self.outputs_keys = outputs
+
+        # Components
+        self.svd_layer = cl.SVDViaEighFullLayer(name='SVD_Cxy')
+        self.diag_xx = cl.DiagVtCvLayer(name='DiagVtCv_xx')
+        self.diag_yy = cl.DiagVtCvLayer(name='DiagVtCv_yy')
+        self.expand_dims = cl.ExpandDimsLayer()
+        self.dim_aware_xx = cl.DimAware2DLayer(name='DimAware2D_xx', features=['q1'])
+        self.dim_aware_yy = cl.DimAware2DLayer(name='DimAware2D_yy', features=['q2'])
+        self.pad_xy = cl.PadA2BSimpleLayer(name='Pad_xy')
+        self.pad_xx = cl.PadA2BSimpleLayer(name='Pad_xx')
+        self.pad_yy = cl.PadA2BSimpleLayer(name='Pad_yy')
+        self.concat = layers.Concatenate()
+        
+        if self.encoding_units:
+            self.encoder = cl.DeepLayer(hidden_layer_sizes=self.encoding_units, name='Encoder_Deep')
+        else:
+            self.encoder = None
+
+        self.shrinkage = cl.DeepRecurrentLayer(
+            recurrent_layer_sizes=self.lstm_units, 
+            final_hidden_layer_sizes=self.final_hidden_layer_sizes,
+            final_activation=self.final_activation, 
+            name='DeepRecurrent'
+        )
+        self.take_top = cl.TakeTop()
+        self.svd_recon = cl.SVDReconstructFromFullLayer(name='SVD_Reconstruct')
+
+    def call(self, inputs):
+        # inputs: [Cxx, Cyy, Cxy, n_samples]
+        Cxx, Cyy, Cxy, n_samples = inputs
+        
+        # SVD decomposition of cross-correlation matrix
+        Sxy, Lxy, Rxy = self.svd_layer(Cxy)
+        
+        # Compute diagonal elements
+        Pxx = self.diag_xx([Cxx, Lxy])
+        Pyy = self.diag_yy([Cyy, Rxy])
+        
+        # Add dimension awareness
+        Sxy_expanded = self.expand_dims(Sxy) # (B, N, 1)
+        Pxx_expanded = self.dim_aware_xx([Pxx, Cxy, n_samples]) # (B, N, 2)
+        Pyy_expanded = self.dim_aware_yy([Pyy, Cxy, n_samples]) # (B, M, 2)
+        
+        Sxy_padded = self.pad_xy([Sxy_expanded, Cxy]) # (B, M, 1)
+        Pxx_padded = self.pad_xx([Pxx_expanded, Cxy]) # (B, M, 2)
+        Pyy_padded = self.pad_yy([Pyy_expanded, Cxy]) # (B, M, 2)
+        
+        Pxx_Sxy = self.concat([Pxx_padded, Sxy_padded])
+        Pyy_Sxy = self.concat([Pyy_padded, Sxy_padded])
+        
+        if self.encoder:
+            Tokens = self.encoder(Pxx_Sxy) + self.encoder(Pyy_Sxy) # (B, M, 4)
+        else:
+            Tokens = Pxx_Sxy + Pyy_Sxy
+            
+        Shrinkage = self.shrinkage(Tokens)
+        Shrinkage = self.take_top([Shrinkage, Sxy])
+        
+        if self.multiplicative:
+            Sxy_cleaned = Shrinkage * Sxy
+        else:
+            Sxy_cleaned = Shrinkage + Sxy
+            
+        outputs_dict = {'Sxy': Sxy_cleaned}
+        if 'Cxy' in self.outputs_keys:
+            Cxy_denoised = self.svd_recon([Sxy_cleaned, Lxy, Rxy])
+            outputs_dict['Cxy'] = Cxy_denoised
+        
+        if len(self.outputs_keys) == 1:
+            return outputs_dict[self.outputs_keys[0]]
+        else:
+            return outputs_dict
+
+    def get_config(self):
+        config = super(GeneralizedCCCModel, self).get_config()
+        config.update({
+            'encoding_units': self.encoding_units,
+            'lstm_units': self.lstm_units,
+            'final_hidden_layer_sizes': self.final_hidden_layer_sizes,
+            'multiplicative': self.multiplicative,
+            'final_activation': self.final_activation,
+            'outputs': self.outputs_keys
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+

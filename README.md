@@ -13,32 +13,33 @@ This repository hosts the **Generalized Cross-Correlation Correction (CCC) Model
 *   **Flexible Configuration**: Customizable architecture including encoding sizes, recurrent unit types/sizes, and activation functions (e.g., Softplus for non-negative multiplicative shrinkage).
 
 ## Repository Structure
-*   `model.py`: Contains the `GeneralizedCCCModel` definition.
-*   `utils/`: Directory containing:
-    *   `helper_functions.py`: Low-level math and helper functions.
+*   `ccc/`: Source package.
+    *   `layers.py`: Contains the `GeneralizedCCCModel` definition.
     *   `custom_layers.py`: Custom Keras layers used by the model.
+*   `tests/`: Unit tests.
 *   `requirements.txt`: Python package dependencies.
-
+*   `verification_script.py`: Script to verify imports and basic functionality.
 
 ## Installation
 
 ```bash
 # Clone the repository
 git clone [Insert Repository Link Here]
+cd Cross-Covariance-Cleaning
 
-# Navigate to the release folder
-cd publication_release
+# Install in editable mode
+pip install -e .
 ```
 
 ## How to use it
 
-The core model is defined in `model.py` and can be easily integrated into TensorFlow/Keras workflows.
+The core model is defined in `ccc.layers` but can be imported directly from the top-level `ccc` package.
 
 ### Example
 
 ```python
 import tensorflow as tf
-from model import GeneralizedCCCModel
+from ccc import GeneralizedCCCModel
 
 # 1. Initialize the model
 #    - multiplicative=True ensures non-negative shrinkage (useful for variance/volatility)
@@ -67,6 +68,14 @@ denoised_Cxy = model([Cxx, Cyy, Cxy, n_samples])
 
 print("Input shape:", Cxy.shape)
 print("Denoised shape:", denoised_Cxy.shape)
+```
+
+## Testing
+
+To run the comprehensive tests, including a training simulation:
+
+```bash
+python -m unittest tests/test_model.py
 ```
 
 ## Requirements
