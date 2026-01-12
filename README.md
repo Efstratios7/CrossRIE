@@ -1,100 +1,140 @@
-# Generalized CCC Model
+# 
 
-## Paper
-[Insert Paper Title and Link Here]
+[![PyPI version](https://img.shields.io/pypi/v/compact-rienet.svg)](https://pypi.org/project/compact-rienet/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**This library implements the neural estimators introduced in:**
+- **Manolakis, E., Bongiorno, C., & Mantegna, R. N. (2025). Physics-Informed Singular-Value Learning for Cross-Covariances Forecasting in Financial Markets. Working Paper.**
+
 
 ## Key Features
-This repository hosts the **Generalized Cross-Correlation Correction (CCC) Model**, a deep learning-based framework for estimating and denoising high-dimensional cross-correlation matrices. Key capabilities include:
-
-*   **Deep Non-Linear Shrinkage**: Utilizes Deep Neural Networks (DNN) and Recurrent Neural Networks (LSTM/GRU) to learn optimal non-linear shrinkage functions for singular values.
-*   **Generalized Noise Modeling**: Supports both **Multiplicative** and **Additive** noise assumptions, allowing flexibility based on the underlying data characteristics.
-*   **SVD-Based Architecture**: Implements an end-to-end differentiable Singular Value Decomposition (SVD) within the model (via `SpectralSVDLayer`), enabling direct optimization of spectral properties.
-*   **Dimension Awareness**: Incorporates "Dimension Aware" layers that account for the ratio of features to samples ($N/T$ and $M/T$), making the model robust to varying system sizes.
-*   **Flexible Configuration**: Customizable architecture including encoding sizes, recurrent unit types/sizes, and activation functions (e.g., Softplus for non-negative multiplicative shrinkage).
-
-## Repository Structure
-*   `ccc/`: Source package.
-    *   `layers.py`: Contains the `GeneralizedCCCLayer` definition.
-    *   `custom_layers.py`: Custom Keras layers used by the model.
-*   `tests/`: Unit tests.
-*   `requirements.txt`: Python package dependencies.
-*   `verification_script.py`: Script to verify imports and basic functionality.
+- **Generalized Cross-Correlation Correction (CCC)**: Uses deep learning to denoise cross-correlation matrices by leveraging empirical marginal correlations and singular value decomposition.
+- **Deep Spectral Denoising**: Implements a shared encoder (MLP) and a bidirectional LSTM aggregator to clean singular values based on global spectral context.
+- **Flexible Correction Mechanisms**: Supports both additive (default) and bounded multiplicative corrections for singular values.
+- **Dimension Awareness**: explicitly incorporates aspect ratios and system dimensions ($n_x, n_y, \Delta t_{in}$) into the correction logic.
+- **Practical Outputs**: Returns naturally denoised cross-correlation matrices ($\mathbf{C}_{XY}$) and/or cleaned singular values ($\widetilde{s}_k$).
+- **TensorFlow/Keras Implementation**: Built as a standard Keras Layer for easy integration into larger deep learning models.
 
 ## Installation
+Install from source:
 
 ```bash
-# Clone the repository
-git clone [Insert Repository Link Here]
-cd Cross-Covariance-Cleaning
-
-# Create and activate the environment
-conda env create -f environment.yml
-conda activate ccc_env
-
-# Install in editable mode
+git clone https://github.com/Efstratios7/CrossRIE.git
+cd CrossRIE
 pip install -e .
 ```
 
-## How to use it
+## Quick Start
 
-The core component is defined in `ccc.layers` as a Keras Layer (`GeneralizedCCCLayer`) but can be imported directly from the top-level `ccc` package.
-
-### Example
+### Basic Usage
+The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C}_{XX}, \mathbf{C}_{YY}$), the cross-correlation matrix ($\mathbf{C}_{XY}$), and the number of samples ($n$).
 
 ```python
 import tensorflow as tf
-from ccc import GeneralizedCCCLayer
+from crossrie.layer import CrossRIELayer
 
-# 1. Initialize the layer
-#    - multiplicative=True ensures non-negative shrinkage (useful for variance/volatility)
-#    - encoding_units: Dense layers before the LSTM
-#    - lstm_units: Hidden state size of the recurrent shrinkage
-ccc_layer = GeneralizedCCCLayer(
-    encoding_units=[16, 8],
-    lstm_units=[32],
-    final_hidden_layer_sizes=[16],
-    multiplicative=True,
-    final_activation='softplus'
+# Initialize the layer
+# By default, it returns the cleaned Cross-Correlation matrix 'Cxy'
+cross_rie = CrossRIELayer(
+    encoding_units=[16, 2],
+    lstm_units=[128, 64],
+    outputs=['Cxy', 'Sxy']
 )
 
-# 2. Prepare dummy data
-#    B: Batch size
-#    N, M: Dimensions of the two systems
-B, N, M = 2, 50, 50
-Cxx = tf.random.normal((B, N, N)) # Covariance/Correlation of System X
-Cyy = tf.random.normal((B, M, M)) # Covariance/Correlation of System Y
-Cxy = tf.random.normal((B, N, M)) # Cross-Correlation between X and Y
-n_samples = tf.constant([100.0, 100.0]) # Number of effective samples per batch
+# Generate dummy data (Batch, N, M)
+B, N, M, T = 32, 10, 12, 100
+Cxx = tf.random.normal((B, N, N))
+Cyy = tf.random.normal((B, M, M))
+Cxy = tf.random.normal((B, N, M))
+n_samples = tf.constant([T] * B) # Number of samples which are used to compute the covariance matrices Cxx and Cyy
 
-# 3. Forward Pass
-#    Returns the denoised Cross-Correlation matrix Cxy
-denoised_Cxy = ccc_layer([Cxx, Cyy, Cxy, n_samples])
+# Forward pass
+outputs = cross_rie([Cxx, Cyy, Cxy, n_samples])
 
-print("Input shape:", Cxy.shape)
-print("Denoised shape:", denoised_Cxy.shape)
+Cxy_clean = outputs['Cxy']      # Denoised Cross-Correlation
+Sxy_clean = outputs['Sxy']      # Cleaned Singular Values
+
+print("Cleaned Cxy shape:", Cxy_clean.shape)
+print("Cleaned Sxy shape:", Sxy_clean.shape)
 ```
 
-## Testing
+### Training
+The layer is fully differentiable and can be trained using standard Keras optimization workflows.
 
-To run the comprehensive tests, including a training simulation:
+```python
+import tensorflow as tf
+from keras import Model, Input
+from crossrie.layer import CrossRIELayer
 
-```bash
-# Ensure environment is active
-conda activate ccc_env
-python -m unittest tests/test_model.py
+B, N, M, T = 32, 10, 12, 100
+
+def create_model():
+    # Shapes are (None, None) to allow variable sequence lengths
+    input_cxx = Input(shape=(None, None), name='Cxx')
+    input_cyy = Input(shape=(None, None), name='Cyy')
+    input_cxy = Input(shape=(None, None), name='Cxy')
+    input_n = Input(shape=(1,), name='n_samples')
+    
+    # Forward pass
+    cxy_clean = CrossRIELayer(outputs=['Cxy'])([input_cxx, input_cyy, input_cxy, input_n])
+    
+    return Model(inputs=[input_cxx, input_cyy, input_cxy, input_n], outputs=cxy_clean)
+
+model = create_model()
+model.compile(optimizer='adam', loss='mse')
+
+# Training Data
+# In a real scenario, these would be computed from your data.
+# Cxx: (Batch, N, N), Cyy: (Batch, M, M), Cxy: (Batch, N, M)
+Cxx = tf.random.normal((B, N, N))
+Cyy = tf.random.normal((B, M, M))
+Cxy = tf.random.normal((B, N, M))
+
+# n_samples must match the batch dimension. 
+# It represents the number of time steps T used to compute the correlations/covariances.
+# Shape: (Batch, 1) or (Batch,)
+n_samples = tf.constant([[float(T)] for _ in range(B)]) 
+
+# Target Variable (Cleaned Cxy)
+# In supervised learning, this would be the "true" cross-correlation.
+Y_target = tf.random.normal((B, N, M))
+
+model.fit([Cxx, Cyy, Cxy, n_samples], Y_target, epochs=1, batch_size=32)
+```
+
+### Different Output Types
+You can configure the layer to return different components by passing a list of keys to `outputs`.
+
+- `'Cxy'`: The reconstructed, denoised cross-correlation matrix.
+- `'Sxy'`: The vector of cleaned singular values.
+
+```python
+# Returns only the cleaned singular values
+layer_s = CrossRIELayer(outputs=['Sxy'])
+s_tilde = layer_s([Cxx, Cyy, Cxy, n_samples])
 ```
 
 ## Requirements
+- Python >= 3.8
+- TensorFlow >= 2.10.0
+- Keras >=3.12.0
+- NumPy >= 1.26.4
 
-The codebase relies on the following core libraries:
-
-*   `tensorflow>=2.10.0`
-*   `keras`
-
-Install them via:
+## Development
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/Efstratios7/CrossRIE.git
+cd CrossRIE
+pip install -e ".[dev]"
+pytest tests/
 ```
 
 ## Citation
-[Insert Citation Here]
+
+## Support
+For questions, issues, or contributions, please:
+
+- Open an issue on [GitHub](https://github.com/bongiornoc/Compact-RIEnet/issues)
+- Check the documentation
+- Contact Efstratios Manolakis (<stratomanolaki@gmail.com>)
+- Contact Prof. Christian Bongiorno (<christian.bongiorno@centralesupelec.fr>) for calibrated model weights or collaboration requests

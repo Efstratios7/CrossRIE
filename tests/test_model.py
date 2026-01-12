@@ -6,9 +6,9 @@ from keras import losses, optimizers
 import numpy as np
 import random
 
-from ccc import GeneralizedCCCLayer
+from crossrie import CrossRIELayer
 
-class TestGeneralizedCCCLayer(unittest.TestCase):
+class TestCrossRIELayer(unittest.TestCase):
     def setUp(self):
         # Default baseline parameters
         self.B = 2
@@ -21,7 +21,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         
     def test_model_initialization_additive(self):
         """Test instantiation and forward pass in Additive mode"""
-        model = GeneralizedCCCLayer(
+        model = CrossRIELayer(
             encoding_units=self.encoding_units,
             lstm_units=self.lstm_units,
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -42,7 +42,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
 
     def test_model_initialization_multiplicative(self):
         """Test instantiation and forward pass in Multiplicative mode"""
-        model = GeneralizedCCCLayer(
+        model = CrossRIELayer(
             encoding_units=self.encoding_units,
             lstm_units=self.lstm_units,
             final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -71,7 +71,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         
         for conf in configs:
             with self.subTest(config=conf):
-                model = GeneralizedCCCLayer(
+                model = CrossRIELayer(
                     encoding_units=conf['encoding'],
                     lstm_units=conf['lstm'],
                     final_hidden_layer_sizes=conf['final'],
@@ -92,7 +92,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         activations = ['softplus', 'relu', 'sigmoid']
         for act in activations:
             with self.subTest(activation=act):
-                model = GeneralizedCCCLayer(
+                model = CrossRIELayer(
                     encoding_units=self.encoding_units,
                     lstm_units=self.lstm_units,
                     final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -111,7 +111,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         activations = ['linear', 'tanh']
         for act in activations:
              with self.subTest(activation=act):
-                model = GeneralizedCCCLayer(
+                model = CrossRIELayer(
                     encoding_units=self.encoding_units,
                     lstm_units=self.lstm_units,
                     final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -127,7 +127,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
     def test_invalid_activation_config(self):
         """Test validation logic for activation functions"""
         with self.assertRaises(ValueError):
-            GeneralizedCCCLayer(
+            CrossRIELayer(
                 encoding_units=self.encoding_units,
                 lstm_units=self.lstm_units,
                 final_hidden_layer_sizes=self.final_hidden_layer_sizes,
@@ -140,7 +140,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         """Stress test with slightly larger matrices"""
         N_large = 50
         M_large = 60
-        model = GeneralizedCCCLayer(
+        model = CrossRIELayer(
             encoding_units=[16],
             lstm_units=[16],
             final_hidden_layer_sizes=[16],
@@ -169,7 +169,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         Cxy_clean = tf.random.normal((B, N, M))
         
         # 2. Initialize Layer
-        layer = GeneralizedCCCLayer(
+        layer = CrossRIELayer(
             encoding_units=[16],
             lstm_units=[16],
             final_hidden_layer_sizes=[8],
@@ -232,7 +232,7 @@ class TestGeneralizedCCCLayer(unittest.TestCase):
         Cxy_clean = tf.random.normal((B, nstocks_N, nstocks_M))
         
         # 2. Initialize Layer
-        layer = GeneralizedCCCLayer(
+        layer = CrossRIELayer(
             encoding_units=[32],
             lstm_units=[16],
             final_hidden_layer_sizes=[16],

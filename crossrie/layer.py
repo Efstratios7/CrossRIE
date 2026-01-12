@@ -3,33 +3,33 @@ from keras import layers, Model
 from . import custom_layers as cl
 from typing import Optional, List, Any
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Models', name='GeneralizedCCCLayer')
-class GeneralizedCCCLayer(layers.Layer):
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='CrossRIELayer')
+class CrossRIELayer(layers.Layer):
     """
     Generalized Cross-Correlation Correction (CCC) Layer.
     Uses deep learning to denoise cross-correlation matrices.
 
     Args:
-        encoding_units: List of integers for the encoder dense layers.
-        lstm_units: List of integers for the LSTM layers.
-        final_hidden_layer_sizes: List of integers for the final dense layers.
-        multiplicative: If True, applies multiplicative shrinkage (for non-negative outputs).
-        final_activation: Activation function for the final output ('softplus', 'relu', 'sigmoid', 'linear', 'tanh').
-        outputs: List of keys specifying which outputs to return (default ['Cxy']).
+        encoding_units: List of integers for the shared encoder (E_theta) MLP structure. e.g. [16, 2] for a 16-unit hidden layer and 2D embedding.
+        lstm_units: List of integers for the bidirectional LSTM aggregator hidden sizes. e.g. [128, 64].
+        final_hidden_layer_sizes: List of integers for the pointwise head (g_theta) hidden layers. e.g. [252] for a 252-unit hidden layer.
+        multiplicative: If True, applies bounded multiplicative correction (s_tilde = s_hat * sigma(delta)) which enforces non-negativity. If False, applies additive correction (s_tilde = s_hat + delta) which is preferred in experiments.
+        final_activation: Activation function for the scalar correction delta. For additive mode, 'linear' is default. For multiplicative mode, 'sigmoid' is used for bounded correction.
+        outputs: List of keys specifying which outputs to return (default ['Cxy']). e.g. ['Cxy', 'Sxy']
         **kwargs: Standard Keras Layer arguments.
 
     Returns:
-         Denoised cross-correlation matrix tensor (or dictionary if multiple outputs selected).
+         Denoised cross-correlation matrix tensor (or dictionary if multiple outputs selected). If Sxy is selected, it returns the learned singular values.
     """
     def __init__(self, 
-                 encoding_units: List[int], 
-                 lstm_units: List[int], 
-                 final_hidden_layer_sizes: List[int],
-                 multiplicative: bool, 
-                 final_activation: str, 
+                 encoding_units: List[int] = [16,2], 
+                 lstm_units: List[int] = [128,64], 
+                 final_hidden_layer_sizes: List[int] = [252],
+                 multiplicative: bool = False, 
+                 final_activation: str = 'linear', 
                  outputs: List[str] = ['Cxy'], 
                  **kwargs):
-        super(GeneralizedCCCLayer, self).__init__(**kwargs)
+        super(CrossRIELayer, self).__init__(**kwargs)
         
         if multiplicative and final_activation not in ['softplus', 'relu', 'sigmoid']:
             raise ValueError("For multiplicative models, final_activation must be one of 'softplus', 'relu', or 'sigmoid' to ensure non-negative outputs.")
@@ -68,6 +68,32 @@ class GeneralizedCCCLayer(layers.Layer):
         )
         self.take_top = cl.TakeTop()
         self.svd_recon = cl.SVDReconstructionLayer(name='SVD_Reconstruct')
+
+    def build(self, input_shape):
+        """
+        Builds the layer and its sub-layers.
+        
+        Args:
+            input_shape: List of input shapes: [Cxx_shape, Cyy_shape, Cxy_shape, n_samples_shape].
+        """
+        # Calculate feature dimension for encoder input
+        # Pxx_expanded has 1 + len(dim_aware_xx.features) channels
+        # Sxy_padded has 1 channel
+        channels_xx = 1 + len(self.dim_aware_xx.features)
+        total_channels = channels_xx + 1 # +1 for Sxy
+        
+        # Build encoder
+        if self.encoder:
+            # Input shape: (Batch, SequenceLength, Features)
+            self.encoder.build((None, None, total_channels))
+            token_dim = self.encoding_units[-1]
+        else:
+            token_dim = total_channels
+            
+        # Build shrinkage (LSTM + Dense heads)
+        self.shrinkage.build((None, None, token_dim))
+        
+        super(CrossRIELayer, self).build(input_shape)
 
     def call(self, inputs: List[Any]) -> Any:
         """
@@ -109,13 +135,13 @@ class GeneralizedCCCLayer(layers.Layer):
         else:
             Tokens = Pxx_Sxy + Pyy_Sxy
             
-        Shrinkage = self.shrinkage(Tokens)
-        Shrinkage = self.take_top([Shrinkage, Sxy])
+        aggregator_head = self.shrinkage(Tokens)
+        aggregator_head = self.take_top([aggregator_head, Sxy])
         
         if self.multiplicative:
-            Sxy_cleaned = Shrinkage * Sxy
+            Sxy_cleaned = aggregator_head * Sxy
         else:
-            Sxy_cleaned = Shrinkage + Sxy
+            Sxy_cleaned = aggregator_head + Sxy
             
         outputs_dict = {'Sxy': Sxy_cleaned}
         if 'Cxy' in self.outputs_keys:
@@ -128,7 +154,7 @@ class GeneralizedCCCLayer(layers.Layer):
             return outputs_dict
 
     def get_config(self):
-        config = super(GeneralizedCCCLayer, self).get_config()
+        config = super(CrossRIELayer, self).get_config()
         config.update({
             'encoding_units': self.encoding_units,
             'lstm_units': self.lstm_units,

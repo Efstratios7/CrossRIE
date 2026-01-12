@@ -6,7 +6,7 @@ import sys
 # Ensure src is in python path
 
 
-from ccc import custom_layers
+from crossrie import custom_layers
 # from ccc import helper_functions # Implicitly tested via custom_layers
 
 def verify_layers():

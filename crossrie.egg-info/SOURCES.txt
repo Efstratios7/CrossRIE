@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+crossrie/__init__.py
+crossrie/custom_layers.py
+crossrie/layer.py
+crossrie.egg-info/PKG-INFO
+crossrie.egg-info/SOURCES.txt
+crossrie.egg-info/dependency_links.txt
+crossrie.egg-info/requires.txt
+crossrie.egg-info/top_level.txt
+tests/test_model.py

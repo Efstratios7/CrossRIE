@@ -154,15 +154,6 @@ def reconstruct_matrix_from_svd(s_k: tf.Tensor,
 # ============================================================================
 
 
-
-
-
-
-
-
-
-
-
 @tf.keras.utils.register_keras_serializable(package='Custom_Layers', name='ExpandDimsLayer')
 class ExpandDimsLayer(layers.Layer):
     """
