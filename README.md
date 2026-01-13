@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **This library implements the neural estimators introduced in:**
-- **Manolakis, E., Bongiorno, C., & Mantegna, R. N. (2025). Physics-Informed Singular-Value Learning for Cross-Covariances Forecasting in Financial Markets. Working Paper.**
+- **Manolakis, E., Bongiorno, C., & Mantegna, R. N. (2025). Physics-Informed Singular-Value Learning for Cross-Covariances Forecasting in Financial Markets. Working Paper (arXiv:2601.07687). [https://www.arxiv.org/abs/2601.07687](https://www.arxiv.org/abs/2601.07687)**
 
 
 ## Key Features
@@ -30,7 +30,7 @@ pip install -e .
 ## Quick Start
 
 ### Basic Usage
-The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C_{XX}}$, $\mathbf{C_{YY}}$), the cross-correlation matrix ($\mathbf{C_{XY}}$), and the number of samples ($n$).
+The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C_{XX}}$, $\mathbf{C_{YY}}$), the cross-correlation matrix ($\mathbf{C_{XY}}$), and the number of samples ($T$).
 
 ```python
 import tensorflow as tf
@@ -49,10 +49,10 @@ B, N, M, T = 32, 10, 12, 100
 Cxx = tf.random.normal((B, N, N))
 Cyy = tf.random.normal((B, M, M))
 Cxy = tf.random.normal((B, N, M))
-n_samples = tf.constant([T] * B) # Number of samples which are used to compute the covariance matrices Cxx and Cyy
+T_samples = tf.constant([T] * B) # Number of samples which are used to compute the covariance matrices Cxx and Cyy
 
 # Forward pass
-outputs = cross_rie([Cxx, Cyy, Cxy, n_samples])
+outputs = cross_rie([Cxx, Cyy, Cxy, T_samples])
 
 Cxy_clean = outputs['Cxy']      # Denoised Cross-Correlation
 Sxy_clean = outputs['Sxy']      # Cleaned Singular Values
@@ -76,12 +76,12 @@ def create_model():
     input_cxx = Input(shape=(None, None), name='Cxx')
     input_cyy = Input(shape=(None, None), name='Cyy')
     input_cxy = Input(shape=(None, None), name='Cxy')
-    input_n = Input(shape=(1,), name='n_samples')
+    input_t = Input(shape=(None,), name='T_samples')
     
     # Forward pass
-    cxy_clean = CrossRIELayer(outputs=['Cxy'])([input_cxx, input_cyy, input_cxy, input_n])
+    cxy_clean = CrossRIELayer(outputs=['Cxy'])([input_cxx, input_cyy, input_cxy, input_t])
     
-    return Model(inputs=[input_cxx, input_cyy, input_cxy, input_n], outputs=cxy_clean)
+    return Model(inputs=[input_cxx, input_cyy, input_cxy, input_t], outputs=cxy_clean)
 
 model = create_model()
 model.compile(optimizer='adam', loss='mse')
@@ -93,16 +93,16 @@ Cxx = tf.random.normal((B, N, N))
 Cyy = tf.random.normal((B, M, M))
 Cxy = tf.random.normal((B, N, M))
 
-# n_samples must match the batch dimension. 
+# T_samples must match the batch dimension. 
 # It represents the number of time steps T used to compute the correlations/covariances.
 # Shape: (Batch, 1) or (Batch,)
-n_samples = tf.constant([[float(T)] for _ in range(B)]) 
+T_samples = tf.constant([[float(T)] for _ in range(B)]) 
 
 # Target Variable (Cleaned Cxy)
 # In supervised learning, this would be the "true" cross-correlation.
 Y_target = tf.random.normal((B, N, M))
 
-model.fit([Cxx, Cyy, Cxy, n_samples], Y_target, epochs=1, batch_size=32)
+model.fit([Cxx, Cyy, Cxy, T_samples], Y_target, epochs=1, batch_size=32)
 ```
 
 ### Different Output Types
@@ -114,7 +114,7 @@ You can configure the layer to return different components by passing a list of 
 ```python
 # Returns only the cleaned singular values
 layer_s = CrossRIELayer(outputs=['Sxy']) # When creating the model use Sxy to receive the cleaned singular values instead the clean cross-correlation matrix Cxy
-s_tilde = layer_s([Cxx, Cyy, Cxy, n_samples])
+s_tilde = layer_s([Cxx, Cyy, Cxy, T_samples])
 ```
 
 ## Requirements
@@ -139,4 +139,4 @@ For questions, issues, or contributions, please:
 - Open an issue on [GitHub](https://github.com/bongiornoc/Compact-RIEnet/issues)
 - Check the documentation
 - Contact Efstratios Manolakis (<stratomanolaki@gmail.com>)
-- Contact Prof. Christian Bongiorno (<christian.bongiorno@centralesupelec.fr>) for calibrated model weights or collaboration requests
+- Contact Prof. Christian Bongiorno (<christian.bongiorno@centralesupelec.fr>)

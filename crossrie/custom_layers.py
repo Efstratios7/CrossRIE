@@ -154,7 +154,7 @@ def reconstruct_matrix_from_svd(s_k: tf.Tensor,
 # ============================================================================
 
 
-@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name='ExpandDimsLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='ExpandDimsLayer')
 class ExpandDimsLayer(layers.Layer):
     """
     Layer to expand dimensions of input tensor.
@@ -200,7 +200,7 @@ class ExpandDimsLayer(layers.Layer):
         shape.insert(self.axis if self.axis >= 0 else len(shape) + self.axis + 1, 1)
         return tuple(shape)
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Functions', name='SpectralSVDLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='SpectralSVDLayer')
 class SpectralSVDLayer(tf.keras.layers.Layer):
     """
     Layer wrapper for Spectral SVD Decomposition.
@@ -242,7 +242,7 @@ class SpectralSVDLayer(tf.keras.layers.Layer):
         config.update({'eps': self.eps})
         return config
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Functions', name='ProjectedVarianceDiagonalLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='ProjectedVarianceDiagonalLayer')
 class ProjectedVarianceDiagonalLayer(tf.keras.layers.Layer):
     """
     Layer wrapper for computing diagonal of V^T C V.
@@ -277,7 +277,7 @@ class ProjectedVarianceDiagonalLayer(tf.keras.layers.Layer):
     def get_config(self):
         return super().get_config()
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Functions', name='DimensionAwarenessLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='DimensionAwarenessLayer')
 class DimensionAwarenessLayer(tf.keras.layers.Layer):
     """
     Adds dimension-aware features (like N/T, M/T) to the input tensor.
@@ -330,7 +330,7 @@ class DimensionAwarenessLayer(tf.keras.layers.Layer):
             inputs: Tuple (Mat, Shape_mat, t).
             Mat: Input matrix (Pxx/Pyy) [Batch, N, 1] (or [Batch, M, 1]).
             Shape_mat: Input shape matrix (Cxy) [Batch, N, M].
-            t: Input time vector (n_samples) [Batch].
+            t: Input time vector (T_samples) [Batch].
 
         Returns:
             Tensor with added features. [Batch, N, 2] (or [Batch, M, 2]).
@@ -385,7 +385,7 @@ class DimensionAwarenessLayer(tf.keras.layers.Layer):
         config.update({'features': self.features})
         return config
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Functions', name='DimensionMatchingLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='DimensionMatchingLayer')
 class DimensionMatchingLayer(tf.keras.layers.Layer):
     """
     Layer to pad input A to match shape of B.
@@ -422,7 +422,7 @@ class DimensionMatchingLayer(tf.keras.layers.Layer):
     def get_config(self):
         return super().get_config()
 
-@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name='DeepLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='DeepLayer')
 class DeepLayer(layers.Layer):
     """
     A deep fully connected network with dropouts and optional biases.
@@ -529,7 +529,7 @@ class DeepLayer(layers.Layer):
         output_shape[-1] = self.hidden_layer_sizes[-1]
         return tuple(output_shape)
 
-@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name='CustomNormalizationLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='CustomNormalizationLayer')
 class CustomNormalizationLayer(layers.Layer):
     """
     Performs Sum or Inverse normalization along an axis.
@@ -585,7 +585,7 @@ class CustomNormalizationLayer(layers.Layer):
     def from_config(cls, config):
         return cls(**config)
 
-@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name='DeepRecurrentLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='DeepRecurrentLayer')
 class DeepRecurrentLayer(layers.Layer):
     """
     A deep recurrent network followed by a deep fully connected network.
@@ -749,7 +749,7 @@ class TakeTop(layers.Layer):
         config = super(TakeTop, self).get_config()
         return config
 
-@tf.keras.utils.register_keras_serializable(package='CCC_Functions', name='SVDReconstructionLayer')
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='SVDReconstructionLayer')
 class SVDReconstructionLayer(tf.keras.layers.Layer):
     """
     Reconstructs matrix from SVD components.

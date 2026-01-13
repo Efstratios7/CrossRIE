@@ -33,9 +33,9 @@ class TestCrossRIELayer(unittest.TestCase):
         Cxx = tf.random.normal((self.B, self.N, self.N))
         Cyy = tf.random.normal((self.B, self.M, self.M))
         Cxy = tf.random.normal((self.B, self.N, self.M))
-        n_samples = tf.constant([100.0] * self.B)
+        T_samples = tf.constant([self.T] * self.B)
         
-        output = model([Cxx, Cyy, Cxy, n_samples])
+        output = model([Cxx, Cyy, Cxy, T_samples])
         
         # Output should be (B, N, M) - corresponding to Cxy shape
         self.assertEqual(output.shape, (self.B, self.N, self.M))
@@ -54,9 +54,9 @@ class TestCrossRIELayer(unittest.TestCase):
         Cxx = tf.random.normal((self.B, self.N, self.N))
         Cyy = tf.random.normal((self.B, self.M, self.M))
         Cxy = tf.random.normal((self.B, self.N, self.M))
-        n_samples = tf.constant([100.0] * self.B)
+        T_samples = tf.constant([self.T] * self.B)
         
-        output = model([Cxx, Cyy, Cxy, n_samples])
+        output = model([Cxx, Cyy, Cxy, T_samples])
         self.assertEqual(output.shape, (self.B, self.N, self.M))
 
 
@@ -82,9 +82,9 @@ class TestCrossRIELayer(unittest.TestCase):
                 Cxx = tf.random.normal((self.B, self.N, self.N))
                 Cyy = tf.random.normal((self.B, self.M, self.M))
                 Cxy = tf.random.normal((self.B, self.N, self.M))
-                n_samples = tf.constant([100.0] * self.B)
+                T_samples = tf.constant([self.T] * self.B)
                 
-                output = model([Cxx, Cyy, Cxy, n_samples])
+                output = model([Cxx, Cyy, Cxy, T_samples])
                 self.assertEqual(output.shape, (self.B, self.N, self.M))
 
     def test_valid_activations(self):
@@ -103,8 +103,8 @@ class TestCrossRIELayer(unittest.TestCase):
                 Cxx = tf.random.normal((self.B, self.N, self.N))
                 Cyy = tf.random.normal((self.B, self.M, self.M))
                 Cxy = tf.random.normal((self.B, self.N, self.M))
-                n_samples = tf.constant([100.0] * self.B)
-                model([Cxx, Cyy, Cxy, n_samples])
+                T_samples = tf.constant([self.T] * self.B)
+                model([Cxx, Cyy, Cxy, T_samples])
 
     def test_additive_activations(self):
         """Test supported activations for additive mode"""
@@ -121,8 +121,8 @@ class TestCrossRIELayer(unittest.TestCase):
                 Cxx = tf.random.normal((self.B, self.N, self.N))
                 Cyy = tf.random.normal((self.B, self.M, self.M))
                 Cxy = tf.random.normal((self.B, self.N, self.M))
-                n_samples = tf.constant([100.0] * self.B)
-                model([Cxx, Cyy, Cxy, n_samples])
+                T_samples = tf.constant([self.T] * self.B)
+                model([Cxx, Cyy, Cxy, T_samples])
 
     def test_invalid_activation_config(self):
         """Test validation logic for activation functions"""
@@ -150,9 +150,9 @@ class TestCrossRIELayer(unittest.TestCase):
         Cxx = tf.random.normal((self.B, N_large, N_large))
         Cyy = tf.random.normal((self.B, M_large, M_large))
         Cxy = tf.random.normal((self.B, N_large, M_large))
-        n_samples = tf.constant([200.0] * self.B)
+        T_samples = tf.constant([200.0] * self.B)
         
-        output = model([Cxx, Cyy, Cxy, n_samples])
+        output = model([Cxx, Cyy, Cxy, T_samples])
         self.assertEqual(output.shape, (self.B, N_large, M_large))
 
 
@@ -163,7 +163,7 @@ class TestCrossRIELayer(unittest.TestCase):
         Cxx = tf.random.normal((B, N, N))
         Cyy = tf.random.normal((B, M, M))
         Cxy_noisy = tf.random.normal((B, N, M))
-        n_samples = tf.constant([100.0] * B)
+        T_samples = tf.constant([self.T] * B)
         
         # Target (Clean Cxy)
         Cxy_clean = tf.random.normal((B, N, M))
@@ -193,9 +193,9 @@ class TestCrossRIELayer(unittest.TestCase):
         model.compile(optimizer=optimizer, loss=loss_fn)
         
         # 4. Train for one step
-        # Note: input is [Cxx, Cyy, Cxy, n_samples]
+        # Note: input is [Cxx, Cyy, Cxy, T_samples]
         history = model.fit(
-            x=[Cxx, Cyy, Cxy_noisy, n_samples],
+            x=[Cxx, Cyy, Cxy_noisy, T_samples],
             y=Cxy_clean,
             epochs=1,
             batch_size=2,
@@ -208,7 +208,7 @@ class TestCrossRIELayer(unittest.TestCase):
         self.assertGreater(loss, 0.0)
         
         # 6. Check forward pass after training
-        pred = model.predict([Cxx, Cyy, Cxy_noisy, n_samples])
+        pred = model.predict([Cxx, Cyy, Cxy_noisy, T_samples])
         self.assertEqual(pred.shape, (B, N, M))
 
 
@@ -226,7 +226,7 @@ class TestCrossRIELayer(unittest.TestCase):
         Cxx = tf.random.normal((B, nstocks_N, nstocks_N))
         Cyy = tf.random.normal((B, nstocks_M, nstocks_M))
         Cxy_noisy = tf.random.normal((B, nstocks_N, nstocks_M))
-        n_samples = tf.constant([float(ndays)] * B)
+        T_samples = tf.constant([float(ndays)] * B)
         
         # Target
         Cxy_clean = tf.random.normal((B, nstocks_N, nstocks_M))
@@ -255,7 +255,7 @@ class TestCrossRIELayer(unittest.TestCase):
         
         # 4. Train
         history = model.fit(
-            x=[Cxx, Cyy, Cxy_noisy, n_samples],
+            x=[Cxx, Cyy, Cxy_noisy, T_samples],
             y=Cxy_clean,
             epochs=1,
             batch_size=B,
@@ -266,7 +266,7 @@ class TestCrossRIELayer(unittest.TestCase):
         self.assertGreater(loss, 0.0)
         
         # 5. Predict
-        pred = model.predict([Cxx, Cyy, Cxy_noisy, n_samples])
+        pred = model.predict([Cxx, Cyy, Cxy_noisy, T_samples])
         self.assertEqual(pred.shape, (B, nstocks_N, nstocks_M))
 
 if __name__ == '__main__':

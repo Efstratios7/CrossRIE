@@ -1,4 +1,4 @@
-name: ccc_env
+name: crossrie_env
 channels:
   - defaults
 dependencies:

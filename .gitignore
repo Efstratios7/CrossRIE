@@ -2,3 +2,5 @@ my_test.ipynb
 ccc.egg-info/*
 **/__pycache__/
 notebook/*
+verification_script.py
+crossrie.egg-info/
