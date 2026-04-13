@@ -1,5 +1,13 @@
 import tensorflow as tf
 import numpy as np
+import scipy as sp
+
+def sqrtm_psd(A, min_eig=1e-10):
+    eigvals, eigvecs = np.linalg.eigh(A) 
+    eigvals = np.maximum(eigvals, 0.0)            
+    mask = eigvals > min_eig
+    L = eigvecs[:, mask] * np.sqrt(eigvals[mask])  
+    return L
 
 def dynamic_matrix_generator(batch_size=16, N_range=(20, 50), M_range=(20, 50),ndays_range=(200,600)):
     """Generates a batch of correctly shaped, dynamic data tensors."""
@@ -8,19 +16,37 @@ def dynamic_matrix_generator(batch_size=16, N_range=(20, 50), M_range=(20, 50),n
         N = np.random.randint(N_range[0], N_range[1]+1)
         M = np.random.randint(M_range[0], M_range[1]+1)
         ndays = np.random.randint(ndays_range[0], ndays_range[1]+1)
-        
-        # PSD matrices for Cxx and Cyy
-        X_N = tf.random.normal((batch_size, N, ndays))
-        Cxx = tf.matmul(X_N, X_N, transpose_b=True)
-        
-        X_M = tf.random.normal((batch_size, M, ndays))
-        Cyy = tf.matmul(X_M, X_M, transpose_b=True)
+        df = np.random.uniform(3.1,4.2,size=2)
 
+        X = np.random.standard_t(df=df[0],size=(batch_size, N, ndays))
+        Y = np.random.standard_t(df=df[1],size=(batch_size, M, ndays))
 
-        Cxy_clean = tf.matmul(X_N, X_M, transpose_b=True) / ndays
+        zX = sp.stats.zscore(X,axis=-1)
+        zY = sp.stats.zscore(Y,axis=-1)
+
+        cX = zX @ zX.transpose(0,2,1) / ndays
+        cY = zY @ zY.transpose(0,2,1) / ndays  
+
+        L_lower_batchX = np.array([sqrtm_psd(cX[i]) for i in range(batch_size)])
+        L_lower_batchY = np.array([sqrtm_psd(cY[i]) for i in range(batch_size)])
         
-        # Dense input cross-correlations
-        Cxy_noisy = Cxy_clean +tf.random.normal(mean=0,stddev=0.01,shape=(batch_size, N, M))
+        rX = L_lower_batchX.shape[2]   
+        rY = L_lower_batchY.shape[2]
+
+        X_batch = np.random.normal(size=(batch_size, rX, ndays))
+        Y_batch = np.random.normal(size=(batch_size, rY, ndays))
+
+        X_N = L_lower_batchX @ X_batch
+        X_M = L_lower_batchY @ Y_batch
+
+        zX_sample = sp.stats.zscore(X_N,axis=-1)
+        zY_sample = sp.stats.zscore(X_M,axis=-1)
+        
+        Cxx = zX_sample @ zX_sample.transpose(0,2,1) / ndays
+        Cyy = zY_sample @ zY_sample.transpose(0,2,1) / ndays
+
+        Cxy_clean = zX @ zY.transpose(0,2,1) / ndays
+        Cxy_noisy = zX_sample @ zY_sample.transpose(0,2,1) / ndays
         T_samples = tf.constant([float(ndays)] * batch_size)
         
         yield (Cxx, Cyy, Cxy_noisy, T_samples), Cxy_clean
