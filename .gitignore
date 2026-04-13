@@ -1,6 +1,34 @@
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# Jupyter / Notebooks
+*.ipynb_checkpoints/
+notebook/
+
+# Data and local artifacts
+data/
+datasets/
+
+# OS
+.DS_Store
+
+# Project-specific
 my_test.ipynb
-ccc.egg-info/*
-**/__pycache__/
-notebook/*
 verification_script.py
-crossrie.egg-info/

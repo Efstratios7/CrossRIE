@@ -1,7 +1,7 @@
 import tensorflow as tf
 from keras import layers
 from keras import backend as K
-from typing import Optional, List, Tuple, Union, Any
+from typing import Optional, List
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -21,21 +21,17 @@ def _symmetrize(M: tf.Tensor) -> tf.Tensor:
     return 0.5 * (M + tf.linalg.matrix_transpose(M))
 
 @tf.function(reduce_retracing=True)
-def spectral_svd_decomposition(C: tf.Tensor, 
-                               eps: Optional[float] = None, 
-                               jitter_eigh: float = 0.0) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+def svd_via_eigh_full(C, eps=None, jitter_eigh=0.0):
    """
-   Computes a batched SVD decomposition using `tf.linalg.eigh` on the covariance matrix C * C^T.
-   
-   Args:
-       C: Input tensor of shape [B, N, M].
-       eps: Epsilon for numerical stability. If None, uses backend epsilon.
-       jitter_eigh: Small jitter added to the diagonal for stability during eigendecomposition.
-       
-   Returns:
-       s_k: Singular values of shape [B, r], where r = min(N, M). Sorted in descending order.
-       U_full: Left singular vectors of shape [B, N, N].
-       V_full: Right singular vectors of shape [B, M, M], where the first r columns are consistent with s_k and U_full.
+   Batched SVD via eigh(CC^T) con V_full costruita in modo coerente con U_k e s_k.
+
+
+
+   C: [B, n, m]
+   Ritorna:
+     s_k    [B, r]        (r = min(n,m), singolari in ordine decrescente)
+     U_k    [B, n, r]
+     V_full [B, m, m]     (prime r colonne = right singular vectors coerenti)
    """
    C = tf.convert_to_tensor(C)
    if eps is None:
@@ -47,22 +43,22 @@ def spectral_svd_decomposition(C: tf.Tensor,
    r = tf.minimum(n, m)
    m_minus_r = m - r
 
-   # 1) Compute U_k and s_k from eigh(C * C^T)
+   # 1) U_k e s_k da eigh(CC^T), simmetrizzato
    A = tf.matmul(C, C, transpose_b=True)            # [B, n, n]
    A = _symmetrize(A)
 
    if jitter_eigh != 0.0:
        I_n = tf.eye(n, batch_shape=[B], dtype=C.dtype)
-       A = A + tf.cast(jitter_eigh, C.dtype) * I_n  
+       A = A + tf.cast(jitter_eigh, C.dtype) * I_n  # piccolo jitter sulla diagonale
 
-   evals_u, U_full = tf.linalg.eigh(A)              
+   evals_u, U_full = tf.linalg.eigh(A)              # autovalori in ordine crescente
 
-   # Sort in descending order
+   # Ordina in ordine decrescente
    idx_u = tf.argsort(evals_u, direction="DESCENDING")
    evals_u = tf.gather(evals_u, idx_u, batch_dims=1, axis=1)    # [B, n]
    U_full = tf.gather(U_full, idx_u, batch_dims=1, axis=2)      # [B, n, n]
 
-   # Singular values = sqrt(max(evals, 0))
+   # Singolari = sqrt(max(evals, 0))
    zeros_evals = tf.zeros_like(evals_u)
    s_all = tf.sqrt(tf.maximum(evals_u, zeros_evals))            # [B, n]
 
@@ -70,11 +66,11 @@ def spectral_svd_decomposition(C: tf.Tensor,
    s_k = s_all[:, :r]                                           # [B, r]
    s_safe = tf.maximum(s_k, eps)
 
-   # 2) Compute first r columns of V: V1 = C^T U_k / s_k
+   # 2) prime r colonne di V: V1 = C^T U_k / s_k
    V1 = tf.matmul(C, U_k, transpose_a=True)                     # [B, m, r]
    V1 = V1 / tf.expand_dims(s_safe, axis=1)                     # [B, m, r]
 
-   # 3) Normalize V1 columns and compensate in s_k
+   # 3) normalizza colonne di V1 e compensa in s_k
    norms = tf.maximum(tf.linalg.norm(V1, axis=1), eps)          # [B, r]
    V1 = V1 / tf.expand_dims(norms, axis=1)                      # [B, m, r]
    s_k = s_k * norms                                            # [B, r]
@@ -82,12 +78,17 @@ def spectral_svd_decomposition(C: tf.Tensor,
    I_m = tf.eye(m, batch_shape=[B], dtype=C.dtype)              # [B, m, m]
    W0 = I_m[:, :, r:]                                           # [B, m, m-r]
 
-   # Project W0 onto the complement of span(V1)
+   # Proietta W0 sul complemento di span(V1):
+   # V1^T W0: [B, r, m-r]
    V1tW0 = tf.matmul(V1, W0, transpose_a=True)
+   # W1 = W0 - V1 (V1^T W0): [B, m, m-r]
    W1 = W0 - tf.matmul(V1, V1tW0)
 
-   # QR decomposition of W1
-   V2, _ = tf.linalg.qr(tf.stop_gradient(W1), full_matrices=False)              # [B, m, m-r]
+   # QR di W1: le colonne di Q sono ortonormali e (idealmente) nel complemento di span(V1)
+   # Funziona anche quando m_minus_r == 0 (dimensione nulla).
+   # stop_gradient: QR grad does not support dynamic shapes in graph mode;
+   # V2 only provides complement-space features, not a critical gradient path.
+   V2, _ = tf.linalg.qr(tf.stop_gradient(W1), full_matrices=False)  # [B, m, m-r]
    V2 = tf.stop_gradient(V2)
 
    # V_full = [V1 | V2]
@@ -236,7 +237,7 @@ class SpectralSVDLayer(tf.keras.layers.Layer):
             - U_full: Left singular vectors [Batch, N, N].
             - V_full: Right singular vectors [Batch, M, M].
         """
-        return spectral_svd_decomposition(C, eps=self.eps)
+        return svd_via_eigh_full(C, eps=self.eps)
     
     def get_config(self):
         config = super().get_config()

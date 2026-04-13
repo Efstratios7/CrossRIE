@@ -1,7 +1,6 @@
-# 
+# CrossRIE
 
-[![PyPI version](https://img.shields.io/pypi/v/compact-rienet.svg)](https://pypi.org/project/compact-rienet/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **This library implements the neural estimators introduced in:**
@@ -19,11 +18,22 @@
 - **Robust End-to-End Forecasting**: Unlike purely analytical cleaners that rely on strict stationarity and bounded spectra, this framework is trained end-to-end to minimize out-of-sample (OOS) reconstruction error. The design is dimension-agnostic, allowing a model trained on one range of assets to be deployed across different universe sizes and relative dimensions without retraining.
 
 ## Installation
-Install from source:
+
+### Using pip (from source)
 
 ```bash
 git clone https://github.com/Efstratios7/CrossRIE.git
 cd CrossRIE
+pip install -e .
+```
+
+### Using Conda
+
+```bash
+git clone https://github.com/Efstratios7/CrossRIE.git
+cd CrossRIE
+conda env create -f environment.yml
+conda activate crossrie_env
 pip install -e .
 ```
 
@@ -118,10 +128,10 @@ s_tilde = layer_s([Cxx, Cyy, Cxy, T_samples])
 ```
 
 ## Requirements
-- Python >= 3.8
+- Python >= 3.9, < 3.13
 - TensorFlow >= 2.10.0
-- Keras >=3.12.0
-- NumPy >= 1.26.4
+- Keras >= 3.0.0
+- NumPy >= 1.24.0, < 2
 
 ## Development
 ```bash
@@ -136,7 +146,6 @@ pytest tests/
 ## Support
 For questions, issues, or contributions, please:
 
-- Open an issue on [GitHub](https://github.com/bongiornoc/Compact-RIEnet/issues)
-- Check the documentation
+- Open an issue on [GitHub](https://github.com/Efstratios7/CrossRIE/issues)
 - Contact Efstratios Manolakis (<stratomanolaki@gmail.com>)
 - Contact Prof. Christian Bongiorno (<christian.bongiorno@centralesupelec.fr>)

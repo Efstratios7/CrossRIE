@@ -15,7 +15,13 @@ classifiers = [
 dependencies = [
     "tensorflow>=2.10.0",
     "keras>=3.0.0",
-    "numpy>=1.24.0",
+    "numpy>=1.24.0,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "scipy>=1.10.0",
 ]
 
 [project.urls]

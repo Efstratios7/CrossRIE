@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras import layers, Model
+from keras import layers
 from . import custom_layers as cl
 from typing import Optional, List, Any
 
