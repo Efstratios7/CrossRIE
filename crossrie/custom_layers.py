@@ -24,7 +24,16 @@ def svd_via_eigh_full(C):
     """
     Differentiable full SVD via eigendecomposition.
     Supports arbitrary batch dimensions (..., m, n).
+
+    Hardened against:
+    - Overflow scaling (values up to ~1e154)
+    - NaN gradients for zero and rank-deficient matrices
+    - Non-orthonormal basis collapse for zero matrices
     """
+    # --- Scale normalization to prevent overflow when squaring large values ---
+    scale = tf.reduce_max(tf.abs(C), axis=[-2, -1]) + 1e-12  # (...)
+    C = C / tf.expand_dims(tf.expand_dims(scale, -1), -1)     # (..., m, n)
+
     # 1. Grab the last two dimensions dynamically
     m = tf.shape(C)[-2]
     n = tf.shape(C)[-1]
@@ -39,8 +48,10 @@ def svd_via_eigh_full(C):
         eigvals = tf.reverse(eigvals, axis=[-1])
         U = tf.reverse(U, axis=[-1])
 
+        # Safe sqrt: route gradients away from sqrt(0) to avoid inf gradients
         eigvals = tf.maximum(eigvals, 0.0)
-        s_full = tf.sqrt(eigvals)                  
+        safe_evals = tf.where(eigvals > 0, eigvals, tf.ones_like(eigvals))
+        s_full = tf.where(eigvals > 0, tf.sqrt(safe_evals), tf.zeros_like(eigvals))
         s = s_full                                 
 
         safe_s = tf.where(s_full > 1e-15, s_full, tf.ones_like(s_full))
@@ -54,10 +65,15 @@ def svd_via_eigh_full(C):
         mask = tf.expand_dims(s_full > 1e-15, axis=-2)
         V_k = tf.where(mask, V_scaled, tf.zeros_like(V_scaled))
 
-        # Null space extraction
+        # Null space extraction via eigh on C^T C
         CTC = tf.matmul(C, C, transpose_a=True)    
         _, V_full = tf.linalg.eigh(CTC)            
         V_full = tf.reverse(V_full, axis=[-1])
+
+        # Replace zero-norm columns in V_k with orthonormal columns from V_full
+        col_norms = tf.norm(V_k, axis=-2, keepdims=True)  # (..., 1, m)
+        zero_cols = col_norms < 1e-15                      # (..., 1, m)
+        V_k = tf.where(zero_cols, V_full[..., :, :m], V_k)
 
         # 4. Use ellipsis to slice only the last dimension safely across batches
         V_null = V_full[..., :, m:]
@@ -72,8 +88,10 @@ def svd_via_eigh_full(C):
         eigvals = tf.reverse(eigvals, axis=[-1])
         V = tf.reverse(V, axis=[-1])
 
+        # Safe sqrt: route gradients away from sqrt(0) to avoid inf gradients
         eigvals = tf.maximum(eigvals, 0.0)
-        s_full = tf.sqrt(eigvals)                  
+        safe_evals = tf.where(eigvals > 0, eigvals, tf.ones_like(eigvals))
+        s_full = tf.where(eigvals > 0, tf.sqrt(safe_evals), tf.zeros_like(eigvals))
         s = s_full
 
         safe_s = tf.where(s_full > 1e-15, s_full, tf.ones_like(s_full))
@@ -85,13 +103,21 @@ def svd_via_eigh_full(C):
         mask = tf.expand_dims(s_full > 1e-15, axis=-2)
         U_k = tf.where(mask, U_scaled, tf.zeros_like(U_scaled))
 
-        # Null space extraction
+        # Null space extraction via eigh on C C^T
         CCT = tf.matmul(C, C, transpose_b=True)    
         _, U_full = tf.linalg.eigh(CCT)
         U_full = tf.reverse(U_full, axis=[-1])       
 
+        # Replace zero-norm columns in U_k with orthonormal columns from U_full
+        col_norms = tf.norm(U_k, axis=-2, keepdims=True)
+        zero_cols = col_norms < 1e-15
+        U_k = tf.where(zero_cols, U_full[..., :, :n], U_k)
+
         U_null = U_full[..., :, n:]
         U = tf.concat([U_k, U_null], axis=-1)
+
+    # Restore true magnitude of singular values
+    s = s * tf.expand_dims(scale, -1)
 
     return s, U, V
 

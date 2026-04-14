@@ -32,6 +32,9 @@ datasets/
 # Testing
 .pytest_cache/
 
+
 # Project-specific
 my_test.ipynb
 verification_script.py
+manual_testing.ipynb
+tests/test_padding_leakage.py
