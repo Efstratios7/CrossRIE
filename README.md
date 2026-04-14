@@ -19,6 +19,10 @@
 
 - **Numerically Stable SVD**: The internal SVD routine (`svd_via_eigh_full`) automatically upcasts to `float64` during eigendecomposition and projects back to the original dtype on output. This ensures consistent numerical precision across CPU and GPU backends without requiring the user to change the global dtype policy.
 
+- **Strict `outputs` Parameter Validation**: The API strictly validates the `outputs` parameter passed to `CrossRIELayer`. Strings are rejected with a `TypeError` (must be a list or tuple), empty collections raise a `ValueError`, and any key not in the allowed set `{'Cxy', 'Sxy'}` raises a `ValueError`. This prevents silent misconfiguration.
+
+- **Native `float64` Precision Preservation**: All internal custom layers (including `CustomNormalizationLayer`) natively preserve `float64` precision without silent downcasting. Intermediate computations dynamically inherit the input tensor's dtype, ensuring that `float64` inputs produce `float64` outputs end-to-end.
+
 ## Installation
 
 ### Using pip (from source)

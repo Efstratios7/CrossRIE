@@ -31,6 +31,15 @@ class CrossRIELayer(layers.Layer):
                  **kwargs):
         super(CrossRIELayer, self).__init__(**kwargs)
         
+        if isinstance(outputs, str):
+            raise TypeError("outputs must be a list or tuple, not a string")
+        if not outputs:
+            raise ValueError("outputs must not be empty")
+        allowed = {'Cxy', 'Sxy'}
+        invalid = [k for k in outputs if k not in allowed]
+        if invalid:
+            raise ValueError(f"outputs contains unknown keys {invalid}. Allowed: {sorted(allowed)}")
+        
         if multiplicative and final_activation not in ['softplus', 'relu', 'sigmoid']:
             raise ValueError("For multiplicative models, final_activation must be one of 'softplus', 'relu', or 'sigmoid' to ensure non-negative outputs.")
         if not multiplicative and final_activation not in ['linear', 'tanh']:

@@ -551,7 +551,7 @@ class CustomNormalizationLayer(layers.Layer):
                  **kwargs):
         if name is None:
             raise ValueError("CustomNormalizationLayer must have a name.")
-        super(CustomNormalizationLayer, self).__init__(name=name, **kwargs)
+        super(CustomNormalizationLayer, self).__init__(name=name, autocast=False, **kwargs)
         self.mode = mode
         self.axis = axis
 
@@ -565,7 +565,7 @@ class CustomNormalizationLayer(layers.Layer):
         Returns:
             Normalized tensor.
         """
-        n = tf.cast(tf.shape(x)[self.axis], dtype=tf.float32)
+        n = tf.cast(tf.shape(x)[self.axis], dtype=x.dtype)
         if self.mode == 'sum':
             x = n * x / tf.reduce_sum(x, axis=self.axis, keepdims=True)
         elif self.mode == 'inverse':
