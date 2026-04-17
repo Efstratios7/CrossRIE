@@ -30,8 +30,8 @@ def svd_via_eigh_full(C):
     - NaN gradients for zero and rank-deficient matrices
     - Non-orthonormal basis collapse for zero matrices
     """
-    # --- Scale normalization to prevent overflow when squaring large values ---
-    scale = tf.reduce_max(tf.abs(C), axis=[-2, -1]) + 1e-12  # (...)
+    
+    scale = tf.reduce_max(tf.abs(C), axis=[-2, -1]) + 1e-12  
     C = C / tf.expand_dims(tf.expand_dims(scale, -1), -1)     # (..., m, n)
 
     # 1. Grab the last two dimensions dynamically
