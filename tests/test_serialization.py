@@ -5,7 +5,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
 import tensorflow as tf
 
-from crossrie import CrossRIELayer
+from crossrie import CrossRIEnetLayer
 
 
 def test_crossrie_model_keras_roundtrip_preserves_outputs(tmp_path):
@@ -15,7 +15,7 @@ def test_crossrie_model_keras_roundtrip_preserves_outputs(tmp_path):
     input_cyy = tf.keras.Input(shape=(None, None), name="Cyy")
     input_cxy = tf.keras.Input(shape=(None, None), name="Cxy")
     input_t = tf.keras.Input(shape=(), name="T_samples")
-    output = CrossRIELayer(
+    output = CrossRIEnetLayer(
         encoding_units=[3],
         lstm_units=[3],
         final_hidden_layer_sizes=[2],

@@ -3,10 +3,10 @@ from keras import layers
 from . import custom_layers as cl
 from typing import Optional, List, Any
 
-@tf.keras.utils.register_keras_serializable(package='crossrie', name='CrossRIELayer')
-class CrossRIELayer(layers.Layer):
+@tf.keras.utils.register_keras_serializable(package='crossrie', name='CrossRIEnetLayer')
+class CrossRIEnetLayer(layers.Layer):
     """
-    Generalized Cross-Correlation Correction (CrossRIE) Layer.
+    Generalized Cross-Correlation Correction (CrossRIEnet) Layer.
     Uses deep learning to denoise cross-correlation matrices.
 
     Args:
@@ -29,7 +29,7 @@ class CrossRIELayer(layers.Layer):
                  final_activation: str = 'linear', 
                  outputs: List[str] = ['Cxy'], 
                  **kwargs):
-        super(CrossRIELayer, self).__init__(**kwargs)
+        super(CrossRIEnetLayer, self).__init__(**kwargs)
         
         if isinstance(outputs, str):
             raise TypeError("outputs must be a list or tuple, not a string")
@@ -100,7 +100,7 @@ class CrossRIELayer(layers.Layer):
         # Pxx_Sxy has shape (Batch, M, total_channels_xx)
         self.two_stream_encoder.build([(None, None, total_channels_xx), (None, None, total_channels_yy)])
         
-        super(CrossRIELayer, self).build(input_shape)
+        super(CrossRIEnetLayer, self).build(input_shape)
 
     def call(self, inputs: List[Any]) -> Any:
         """
@@ -156,7 +156,7 @@ class CrossRIELayer(layers.Layer):
             return outputs_dict
 
     def get_config(self):
-        config = super(CrossRIELayer, self).get_config()
+        config = super(CrossRIEnetLayer, self).get_config()
         config.update({
             'encoding_units': self.encoding_units,
             'lstm_units': self.lstm_units,

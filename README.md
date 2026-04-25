@@ -1,4 +1,4 @@
-# CrossRIE
+# CrossRIEnet
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -19,7 +19,7 @@
 
 - **Numerically Stable SVD**: The internal SVD routine (`svd_via_eigh_full`) automatically upcasts to `float64` during eigendecomposition and projects back to the original dtype on output. This ensures consistent numerical precision across CPU and GPU backends without requiring the user to change the global dtype policy.
 
-- **Strict `outputs` Parameter Validation**: The API strictly validates the `outputs` parameter passed to `CrossRIELayer`. Strings are rejected with a `TypeError` (must be a list or tuple), empty collections raise a `ValueError`, and any key not in the allowed set `{'Cxy', 'Sxy'}` raises a `ValueError`. This prevents silent misconfiguration.
+- **Strict `outputs` Parameter Validation**: The API strictly validates the `outputs` parameter passed to `CrossRIEnetLayer`. Strings are rejected with a `TypeError` (must be a list or tuple), empty collections raise a `ValueError`, and any key not in the allowed set `{'Cxy', 'Sxy'}` raises a `ValueError`. This prevents silent misconfiguration.
 
 - **Native `float64` Precision Preservation**: All internal custom layers (including `CustomNormalizationLayer`) natively preserve `float64` precision without silent downcasting. Intermediate computations dynamically inherit the input tensor's dtype, ensuring that `float64` inputs produce `float64` outputs end-to-end.
 
@@ -28,16 +28,16 @@
 ### Using pip (from source)
 
 ```bash
-git clone https://github.com/Efstratios7/CrossRIE.git
-cd CrossRIE
+git clone https://github.com/Efstratios7/CrossRIEnet.git
+cd CrossRIEnet
 pip install -e .
 ```
 
 ### Using Conda
 
 ```bash
-git clone https://github.com/Efstratios7/CrossRIE.git
-cd CrossRIE
+git clone https://github.com/Efstratios7/CrossRIEnet.git
+cd CrossRIEnet
 conda env create -f environment.yml
 conda activate crossrie_env
 pip install -e .
@@ -46,15 +46,15 @@ pip install -e .
 ## Quick Start
 
 ### Basic Usage
-The core component is the `CrossRIELayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C_{XX}}$, $\mathbf{C_{YY}}$), the cross-correlation matrix ($\mathbf{C_{XY}}$), and the number of samples ($T$).
+The core component is the `CrossRIEnetLayer`. It expects four inputs: the two marginal covariance matrices ($\mathbf{C_{XX}}$, $\mathbf{C_{YY}}$), the cross-correlation matrix ($\mathbf{C_{XY}}$), and the number of samples ($T$).
 
 ```python
 import tensorflow as tf
-from crossrie.layer import CrossRIELayer
+from crossrie.layer import CrossRIEnetLayer
 
 # Initialize the layer
 # By default, it returns the cleaned Cross-Correlation matrix 'Cxy'
-cross_rie = CrossRIELayer(
+cross_rie = CrossRIEnetLayer(
     encoding_units=[16, 2],
     lstm_units=[128, 64],
     outputs=['Cxy', 'Sxy']
@@ -83,7 +83,7 @@ The layer is fully differentiable and can be trained using standard Keras optimi
 ```python
 import tensorflow as tf
 from keras import Model, Input
-from crossrie.layer import CrossRIELayer
+from crossrie.layer import CrossRIEnetLayer
 
 B, N, M, T = 32, 10, 12, 100
 
@@ -95,7 +95,7 @@ def create_model():
     input_t = Input(shape=(None,), name='T_samples')
     
     # Forward pass
-    cxy_clean = CrossRIELayer(outputs=['Cxy'])([input_cxx, input_cyy, input_cxy, input_t])
+    cxy_clean = CrossRIEnetLayer(outputs=['Cxy'])([input_cxx, input_cyy, input_cxy, input_t])
     
     return Model(inputs=[input_cxx, input_cyy, input_cxy, input_t], outputs=cxy_clean)
 
@@ -129,7 +129,7 @@ You can configure the layer to return different components by passing a list of 
 
 ```python
 # Returns only the cleaned singular values
-layer_s = CrossRIELayer(outputs=['Sxy']) # When creating the model use Sxy to receive the cleaned singular values instead the clean cross-correlation matrix Cxy
+layer_s = CrossRIEnetLayer(outputs=['Sxy']) # When creating the model use Sxy to receive the cleaned singular values instead the clean cross-correlation matrix Cxy
 s_tilde = layer_s([Cxx, Cyy, Cxy, T_samples])
 ```
 
@@ -141,8 +141,8 @@ s_tilde = layer_s([Cxx, Cyy, Cxy, T_samples])
 
 ## Development
 ```bash
-git clone https://github.com/Efstratios7/CrossRIE.git
-cd CrossRIE
+git clone https://github.com/Efstratios7/CrossRIEnet.git
+cd CrossRIEnet
 pip install -e ".[dev]"
 ```
 
@@ -156,6 +156,6 @@ pytest tests/test_crossrie.py -v
 ## Support
 For questions, issues, or contributions, please:
 
-- Open an issue on [GitHub](https://github.com/Efstratios7/CrossRIE/issues)
+- Open an issue on [GitHub](https://github.com/Efstratios7/CrossRIEnet/issues)
 - Contact Efstratios Manolakis (<stratomanolaki@gmail.com>)
 - Contact Prof. Christian Bongiorno (<christian.bongiorno@centralesupelec.fr>)

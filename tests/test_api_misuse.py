@@ -5,27 +5,27 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import pytest
 import tensorflow as tf
 
-from crossrie import CrossRIELayer
+from crossrie import CrossRIEnetLayer
 from crossrie.custom_layers import CustomNormalizationLayer
 
 
 def test_outputs_must_not_be_empty():
     with pytest.raises(ValueError, match="outputs"):
-        CrossRIELayer(outputs=[])
+        CrossRIEnetLayer(outputs=[])
 
 
 def test_outputs_rejects_unknown_keys_even_when_valid_key_present():
     with pytest.raises(ValueError, match="outputs"):
-        CrossRIELayer(outputs=["BAD", "Cxy"])
+        CrossRIEnetLayer(outputs=["BAD", "Cxy"])
 
 
 def test_outputs_rejects_string_to_avoid_accidental_dict_return():
     with pytest.raises((TypeError, ValueError), match="outputs"):
-        CrossRIELayer(outputs="Cxy")
+        CrossRIEnetLayer(outputs="Cxy")
 
 
 def test_integer_inputs_fail_with_clear_float_dtype_error():
-    layer = CrossRIELayer(
+    layer = CrossRIEnetLayer(
         encoding_units=[2],
         lstm_units=[2],
         final_hidden_layer_sizes=[],

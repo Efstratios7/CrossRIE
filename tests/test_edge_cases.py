@@ -5,7 +5,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
 import tensorflow as tf
 
-from crossrie import CrossRIELayer
+from crossrie import CrossRIEnetLayer
 from crossrie.custom_layers import reconstruct_matrix_from_svd, svd_via_eigh_full
 
 
@@ -70,7 +70,7 @@ def test_svd_huge_scale_inputs_remain_finite():
 
 def test_crossrie_extreme_asymmetric_dynamic_shapes_are_finite():
     tf.keras.utils.set_random_seed(5)
-    layer = CrossRIELayer(
+    layer = CrossRIEnetLayer(
         encoding_units=[3],
         lstm_units=[3],
         final_hidden_layer_sizes=[2],

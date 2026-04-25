@@ -25,8 +25,8 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Efstratios7/CrossRIE"
-"Bug Tracker" = "https://github.com/Efstratios7/CrossRIE/issues"
+"Homepage" = "https://github.com/Efstratios7/CrossRIEnet"
+"Bug Tracker" = "https://github.com/Efstratios7/CrossRIEnet/issues"
 
 [tool.setuptools.packages.find]
 include = ["crossrie*"]

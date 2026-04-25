@@ -1,8 +1,8 @@
 """
-Unified test suite for CrossRIE.
+Unified test suite for CrossRIEnet.
 
 Tests cover:
-  - CrossRIELayer: forward/backward pass, architecture variants, activations,
+  - CrossRIEnetLayer: forward/backward pass, architecture variants, activations,
     output shapes, dynamic dimensions, N/M > T regime, dataset pipeline.
   - svd_via_eigh_full: forward correctness, singular value properties,
     orthonormality, square/tall matrices.
@@ -18,16 +18,16 @@ import unittest
 import numpy as np
 import tensorflow as tf
 from keras import losses, optimizers
-from crossrie import CrossRIELayer
+from crossrie import CrossRIEnetLayer
 from crossrie.custom_layers import svd_via_eigh_full, reconstruct_matrix_from_svd
 
 
 # ============================================================================
-# CrossRIELayer unit tests
+# CrossRIEnetLayer unit tests
 # ============================================================================
 
-class TestCrossRIELayer(unittest.TestCase):
-    """Fast unit tests for CrossRIELayer: verify plumbing, not learning."""
+class TestCrossRIEnetLayer(unittest.TestCase):
+    """Fast unit tests for CrossRIEnetLayer: verify plumbing, not learning."""
 
     def _build_and_train(self, layer, B=2, N=5, M=7, T=50):
         """Build a model, run one train step with tiny random data, and return the model + loss."""
@@ -52,7 +52,7 @@ class TestCrossRIELayer(unittest.TestCase):
 
     def test_model_initialization_additive(self):
         """Forward + backward pass in additive mode."""
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=False, final_activation='linear'
         )
@@ -61,7 +61,7 @@ class TestCrossRIELayer(unittest.TestCase):
 
     def test_model_initialization_multiplicative(self):
         """Forward + backward pass in multiplicative mode."""
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=True, final_activation='softplus'
         )
@@ -77,7 +77,7 @@ class TestCrossRIELayer(unittest.TestCase):
         ]
         for conf in configs:
             with self.subTest(config=conf):
-                layer = CrossRIELayer(
+                layer = CrossRIEnetLayer(
                     encoding_units=conf['encoding'], lstm_units=conf['lstm'],
                     final_hidden_layer_sizes=conf['final'],
                     multiplicative=True, final_activation='softplus'
@@ -89,7 +89,7 @@ class TestCrossRIELayer(unittest.TestCase):
         """All supported multiplicative activations complete a train step."""
         for act in ['softplus', 'relu', 'sigmoid']:
             with self.subTest(activation=act):
-                layer = CrossRIELayer(
+                layer = CrossRIEnetLayer(
                     encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
                     multiplicative=True, final_activation=act
                 )
@@ -100,7 +100,7 @@ class TestCrossRIELayer(unittest.TestCase):
         """All supported additive activations complete a train step."""
         for act in ['linear', 'tanh']:
             with self.subTest(activation=act):
-                layer = CrossRIELayer(
+                layer = CrossRIEnetLayer(
                     encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
                     multiplicative=False, final_activation=act
                 )
@@ -110,12 +110,12 @@ class TestCrossRIELayer(unittest.TestCase):
     def test_invalid_activation_config(self):
         """Validation rejects invalid activation/mode combos."""
         with self.assertRaises(ValueError):
-            CrossRIELayer(multiplicative=True, final_activation='linear')
+            CrossRIEnetLayer(multiplicative=True, final_activation='linear')
 
     def test_output_shape(self):
         """Output shape matches (B, N, M) for Cxy output."""
         B, N, M = 2, 6, 9
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=False, final_activation='linear'
         )
@@ -130,7 +130,7 @@ class TestCrossRIELayer(unittest.TestCase):
 
     def test_varying_shapes(self):
         """Model handles different N, M across sequential train steps."""
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=True, final_activation='softplus'
         )
@@ -148,7 +148,7 @@ class TestCrossRIELayer(unittest.TestCase):
     def test_training_with_n_m_greater_than_t(self):
         """Model trains when both matrix dimensions exceed the sample count T."""
         B, N, M, T = 2, 12, 14, 5
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=True, final_activation='softplus'
         )
@@ -170,7 +170,7 @@ class TestCrossRIELayer(unittest.TestCase):
         """One epoch / 1 step through the data generator pipeline still works."""
         from tests.data_generator import get_dynamic_dataset
 
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16], final_hidden_layer_sizes=[8],
             multiplicative=True, final_activation='softplus'
         )
@@ -313,17 +313,17 @@ class TestSvdGradientGraphMode(unittest.TestCase):
 
 
 # ============================================================================
-# End-to-end CrossRIELayer gradient tests
+# End-to-end CrossRIEnetLayer gradient tests
 # ============================================================================
 
-class TestCrossRIELayerGradient(unittest.TestCase):
+class TestCrossRIEnetLayerGradient(unittest.TestCase):
     """
-    End-to-end gradient tests for the full CrossRIELayer in graph mode
+    End-to-end gradient tests for the full CrossRIEnetLayer in graph mode
     with dynamic matrix dimensions.
     """
 
     def _build_model(self, **layer_kwargs):
-        layer = CrossRIELayer(
+        layer = CrossRIEnetLayer(
             encoding_units=[8], lstm_units=[16],
             final_hidden_layer_sizes=[8], **layer_kwargs
         )

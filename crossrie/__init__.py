@@ -1,3 +1,3 @@
-from .layer import CrossRIELayer
+from .layer import CrossRIEnetLayer
 
-__all__ = ["CrossRIELayer"]
+__all__ = ["CrossRIEnetLayer"]
